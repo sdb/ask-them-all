@@ -1,0 +1,36 @@
+:root {
+  --sidebar-button-max-width: 90%; /* Adjust the percentage as needed */
+}
+
+.stExpander summary p {
+  font-size: 18px !important;
+}
+
+.stExpander .stButton p {
+  font-size: 14px !important;
+}
+
+.stExpander .stButton div[data-testid="stMarkdownContainer"] {
+  min-height: 0px !important;
+}
+
+.stExpander .stButton button {
+  min-height: 0px !important;
+  text-align: left !important;
+}
+
+div.stButton button div {
+  width: 100%;
+}
+
+div.stButton button div p {
+  width: 100%;
+}
+
+div.stButton button div p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  max-width: var(--sidebar-button-max-width);
+}

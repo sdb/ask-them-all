@@ -1,0 +1,46 @@
+[project]
+name = "ask-them-all"
+description = "Ask them all!"
+authors = [
+  { name = "Stefan De Boey" }
+]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.10,<4"
+
+[tool.poetry]
+package-mode = false
+packages = [
+  { include = "askthemall" },
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "integration"]
+addopts = "-v -ra -q"
+log_cli = true
+log_cli_level = "INFO"
+log_format = "%(asctime)s %(levelname)s %(message)s"
+log_date_format = "%Y-%m-%d %H:%M:%S"
+minversion = "6.0"
+filterwarnings = "ignore"
+cache_dir = ".pytest_cache"
+
+[tool.poetry.dependencies]
+streamlit = "^1.42.0"
+dependency-injector = "^4.45.0"
+babel = "^2.17.0"
+boltons = "^25.0.0"
+htbuilder = "^0.9.0"
+pydantic-settings = "^2.7.1"
+opensearch-py = "^2.8.0"
+groq = "^0.18.0"
+google-generativeai = "^0.8.4"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4"
+tox = "^4.11.4"
+pytest-cov = "^6.0.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
