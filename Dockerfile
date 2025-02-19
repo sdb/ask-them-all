@@ -29,4 +29,4 @@ COPY --from=builder /app/css ./css
 COPY --from=builder /app/main.py ./main.py
 COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 
-CMD ["python", "-m", "streamlit", "run", "main.py", "--server.headless", "true", "--server.port", "8501"]
+CMD ["python", "-m", "streamlit", "run", "main.py"]
