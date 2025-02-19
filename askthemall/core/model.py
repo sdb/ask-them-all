@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List
@@ -38,23 +40,21 @@ class Interaction:
 
 class ChatModel:
 
-    def __init__(self, chat_bot_id: str, chat_bot_name: str, database_client: DatabaseClient,
-                 chat_client: ChatClient = None):
+    def __init__(self, chat_bot: ChatBotModel, database_client: DatabaseClient):
         self.created_at = datetime.now()
-        self.id = f"{chat_bot_id}-{datetime.now().timestamp()}"
-        self.chat_bot_id = chat_bot_id
-        self.chat_bot_name = chat_bot_name
+        self.id = f"{chat_bot.id}-{datetime.now().timestamp()}"
         self.slug = None
-        self.title = f'Chat with {chat_bot_name}'
+        self.title = f'Chat with {chat_bot.name}'
         self.interactions: list[Interaction] = []
         self.started = False
         self.__session = None
-        self.__chat_client = chat_client
+        self.__chat_bot = chat_bot
+        self.__chat_client = chat_bot.chat_client
         self.__database_client = database_client
 
     @property
     def assistant_name(self):
-        return self.chat_bot_name
+        return self.__chat_bot.name
 
     @property
     def enabled(self) -> bool:
@@ -64,7 +64,7 @@ class ChatModel:
         answer = self.__session.ask(question)
         asked_at = datetime.now()
         interaction = Interaction(
-            id=f"{self.chat_bot_id}-{asked_at.timestamp()}",
+            id=f"{self.__chat_bot.id}-{asked_at.timestamp()}",
             chat_id=self.id,
             question=question,
             answer=answer,
@@ -94,18 +94,16 @@ class ChatModel:
     def get_data(self) -> ChatData:
         return ChatData(
             id=self.id,
-            chat_bot_id=self.chat_bot_id,
+            chat_bot_id=self.__chat_bot.id,
             slug=self.slug,
             title=self.title,
             created_at=self.created_at
         )
 
     @classmethod
-    def from_data(cls, chat_bot_name: str, chat_data: ChatData, chat_client: ChatClient,
-                  database_client: DatabaseClient):
-        chat = cls(chat_data.chat_bot_id, chat_bot_name, database_client, chat_client)
+    def from_data(cls, chat_bot: ChatBotModel, chat_data: ChatData, database_client: DatabaseClient):
+        chat = cls(chat_bot, database_client)
         chat.id = chat_data.id
-        chat.chat_bot_id = chat_data.chat_bot_id
         chat.slug = chat_data.slug
         chat.title = chat_data.title
         chat.created_at = chat_data.created_at
@@ -146,25 +144,19 @@ class ChatBotModel:
 
     def get_chat(self, chat_id: str) -> ChatModel:
         chat_data = self.__database_client.get_chat_by_id(chat_id)
-        return ChatModel.from_data(self.__name, chat_data, self.__chat_client, self.__database_client)
+        return ChatModel.from_data(self, chat_data, self.__database_client)
 
-    def get_all_chats(self, max_results: int) -> ChatListModel:
+    def get_all_chats(self, max_results: int = 100) -> ChatListModel:
         chat_data_list_result = self.__database_client.list_all_chats(self.id, max_results=max_results)
         return ChatListModel(
-            chats=list(map(lambda c: ChatModel.from_data(self.__name, c, self.__chat_client, self.__database_client),
+            chats=list(map(lambda c: ChatModel.from_data(self, c, self.__database_client),
                            chat_data_list_result.data)),
             total_results=chat_data_list_result.total_results
         )
 
     def new_chat(self) -> ChatModel:
-        chat = ChatModel(self.__id, self.__name, self.__database_client, self.__chat_client)
+        chat = ChatModel(self, self.__database_client)
         chat.start_chat()
-        return chat
-
-    def switch_chat(self, chat_id: str) -> ChatModel:
-        chat_data = self.__database_client.get_chat_by_id(chat_id)
-        chat = ChatModel.from_data(self.__name, chat_data, self.__chat_client, self.__database_client)
-        chat.restore_chat()
         return chat
 
     @classmethod
@@ -184,6 +176,18 @@ class AskThemAllModel:
                 name=chat_client.name
             ))
 
+    def __get_chat_client_by_id(self, chat_client_id: str) -> ChatClient | None:
+        for chat_client in self.__chat_clients:
+            if chat_client.id == chat_client_id:
+                return chat_client
+        return None
+
+    def __get_chat_bot_by_id(self, chat_bot_id: str) -> ChatBotModel:
+        for chat_bot_data in self.__database_client.list_all_chat_bots():
+            if chat_bot_data.id == chat_bot_id:
+                return ChatBotModel.from_data(chat_bot_data, self.__database_client,
+                                              self.__get_chat_client_by_id(chat_bot_data.id))
+
     @property
     def chat_bots(self) -> List[ChatBotModel]:
         chat_bots = []
@@ -195,3 +199,18 @@ class AskThemAllModel:
             chat_bots.append(ChatBotModel.from_data(chat_bot_data, self.__database_client, matched_client))
         chat_bots.sort(key=lambda c: str(not c.enabled) + c.name, reverse=False)
         return chat_bots
+
+    def filter_chats(self, search_filter: str, max_results: int = 100) -> ChatListModel:
+        chat_data_list_result = self.__database_client.filter_chats(search_filter, max_results)
+        return ChatListModel(
+            chats=list(map(lambda c: ChatModel.from_data(self.__get_chat_bot_by_id(c.chat_bot_id), c,
+                                                         self.__database_client),
+                           chat_data_list_result.data)),
+            total_results=chat_data_list_result.total_results
+        )
+
+    def switch_chat(self, chat_id) -> ChatModel:
+        chat_data = self.__database_client.get_chat_by_id(chat_id)
+        chat = ChatModel.from_data(self.__get_chat_bot_by_id(chat_data.chat_bot_id), chat_data, self.__database_client)
+        chat.restore_chat()
+        return chat

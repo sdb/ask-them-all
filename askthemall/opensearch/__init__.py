@@ -94,6 +94,63 @@ class OpenSearchDatabaseClient(DatabaseClient):
         total_results = response["hits"]["total"]["value"]
         return DataListResult(data=chats, total_results=total_results)
 
+    def filter_chats(self, search_filter: str, max_results=100) -> DataListResult[ChatData]:
+        # TODO: currently only 1000 distinct chats are supported, should use pagination using composite aggregation to support unlimited results
+        chat_ids_response = self.client.search(
+            index=self.__interactions_index_name,
+            body={
+                "query": {
+                    "bool": {
+                        "should": [
+                            {
+                                "wildcard": {
+                                    "question": search_filter
+                                }
+                            },
+                            {
+                                "wildcard": {
+                                    "answer": search_filter
+                                }
+                            }
+                        ]
+                    }
+                },
+                "size": 0,
+                "aggs": {
+                    "distinct_values": {
+                        "terms": {
+                            "field": "chat_id.keyword",
+                            "size": 1000
+                        }
+                    }
+                }
+            },
+            _source=['chat_id']
+        )
+        chat_ids = list(
+            set([bucket["key"] for bucket in chat_ids_response["aggregations"]["distinct_values"]["buckets"]]))
+        chats_response = self.client.search(
+            index=self.__chats_index_name,
+            body={
+                "query": {
+                    "terms": {
+                        "id.keyword": chat_ids
+                    }
+                },
+                "sort": [
+                    {
+                        "created_at": {
+                            "order": "desc"
+                        }
+                    }
+                ],
+                "size": max_results
+            }
+        )
+        chats = [ChatData(**hit["_source"]) for hit in chats_response["hits"]["hits"]]
+        total_results = chats_response["hits"]["total"]["value"]
+        return DataListResult(data=chats, total_results=total_results)
+
     def list_all_interactions(self, chat_id) -> list[InteractionData]:
         response = self.client.search(
             index=self.__interactions_index_name,

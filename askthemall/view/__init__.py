@@ -5,9 +5,31 @@ import streamlit.components.v1 as components
 
 from askthemall.view.helpers import add_css_from_file, format_datetime, hidden_anchor, js_scroll_to, \
     ScrollIntoView
-from askthemall.view.model import AskThemAllViewModel
+from askthemall.view.model import AskThemAllViewModel, ChatListViewModel
 
 logger = logging.getLogger(__name__)
+
+
+def render_chat_list(chat_list: ChatListViewModel):
+    with st.expander(chat_list.title, icon=chat_list.icon, expanded=chat_list.expanded):
+        if chat_list.new_chat_enabled:
+            if st.button("New chat ...", type='tertiary', use_container_width=True,
+                         key=f'new-chat-{chat_list.id}'):
+                chat_list.new_chat()
+        for chat in chat_list.chats:
+            col1, col2 = st.columns([1, 10])
+            with col1:
+                if st.button(label='', icon=":material/delete_forever:", type='tertiary',
+                             key=f'delete-chat-{chat.chat_id}'):
+                    chat.remove()
+            with col2:
+                if st.button(chat.title, type='tertiary', help=chat.title, use_container_width=True,
+                             key=f'view-chat-{chat.chat_id}'):
+                    chat_list.switch_chat(chat.chat_id)
+        if chat_list.has_more_chats:
+            if st.button("Load more ...", type='tertiary', use_container_width=True,
+                         key=f'load-more-chats-{chat_list.id}'):
+                chat_list.load_more_chats()
 
 
 def render(view_model: AskThemAllViewModel):
@@ -35,28 +57,22 @@ def render(view_model: AskThemAllViewModel):
         with st.container(key='sidebar-chats'):
             st.title("Chats")
 
-            for chat_list in view_model.chat_lists:
-                with st.expander(chat_list.title,
-                                 icon=':material/smart_toy:' if chat_list.new_chat_enabled else ':material/inventory_2:',
-                                 expanded=False):
-                    if chat_list.new_chat_enabled:
-                        if st.button("New chat ...", type='tertiary', use_container_width=True,
-                                     key=f'new-chat-{chat_list.chat_bot_id}'):
-                            chat_list.new_chat()
-                    for chat in chat_list.chats:
-                        col1, col2 = st.columns([1, 10])
-                        with col1:
-                            if st.button(label='', icon=":material/delete_forever:", type='tertiary',
-                                         key=f'delete-chat-{chat.chat_id}'):
-                                chat.remove()
-                        with col2:
-                            if st.button(chat.title, type='tertiary', help=chat.title, use_container_width=True,
-                                         key=f'view-chat-{chat.chat_id}'):
-                                chat_list.switch_chat(chat.chat_id)
-                    if chat_list.has_more_chats:
-                        if st.button("Load more ...", type='tertiary', use_container_width=True,
-                                     key=f'load-more-chats-{chat_list.chat_bot_id}'):
-                            chat_list.load_more_chats()
+            search_col1, search_col2 = st.columns([10, 1])
+            with search_col1:
+                search = st.text_input("Search", value=view_model.search_filter, placeholder='Search...',
+                                       key='search-chats', label_visibility='collapsed',
+                                       on_change=view_model.reset_max_results)
+                if search:
+                    view_model.search_filter = search
+            with search_col2:
+                st.button(label="", icon=":material/close:", type='tertiary', key='clear-search',
+                          on_click=view_model.clear_search_filter)
+
+            if view_model.search_filter:
+                render_chat_list(view_model.search_results)
+            else:
+                for chat_list in view_model.chat_lists:
+                    render_chat_list(chat_list)
 
     if view_model.current_chat:
         st.title(view_model.current_chat.title)

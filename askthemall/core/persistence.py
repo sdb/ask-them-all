@@ -73,6 +73,10 @@ class DatabaseClient(ABC):
         pass
 
     @abstractmethod
+    def filter_chats(self, search_filter: str, max_results=100) -> DataListResult[ChatData]:
+        pass
+
+    @abstractmethod
     def list_all_interactions(self, chat_id) -> list[InteractionData]:
         pass
 

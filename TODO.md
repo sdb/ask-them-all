@@ -17,7 +17,6 @@
 - edit chat title
 - tag chats
 - favorite chats
-- search chats
 - rewind chats
 - show number of interactions for each chatbot
 - show number of interactions for each chat
