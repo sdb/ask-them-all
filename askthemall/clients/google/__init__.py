@@ -8,7 +8,7 @@ from askthemall.core.client import ChatSession, SUGGEST_TITLE_QUESTION, ChatClie
 from askthemall.core.persistence import InteractionData
 
 
-class GeminiSession(ChatSession):
+class GoogleSession(ChatSession):
 
     def __init__(self, model, interaction_data_list: List[InteractionData] = None):
         def create_parts(text):
@@ -37,12 +37,12 @@ class GeminiSession(ChatSession):
         return self.__ask(" ".join(SUGGEST_TITLE_QUESTION), remember=False).rstrip()
 
 
-class GeminiClient(ChatClient):
+class GoogleClient(ChatClient):
 
     def __init__(self, client_id, model_name, name: str = None):
         self.__id = client_id
         self.__model_name = model_name
-        self.__name = name if name else f'Gemini ({self.__model_name})'
+        self.__name = name if name else f'Google ({self.__model_name})'
         self.__model = genai.GenerativeModel(self.__model_name)
 
     @property
@@ -54,10 +54,10 @@ class GeminiClient(ChatClient):
         return self.__name
 
     def start_session(self) -> ChatSession:
-        return GeminiSession(model=self.__model)
+        return GoogleSession(model=self.__model)
 
     def restore_session(self, interaction_data_list: List[InteractionData]) -> ChatSession:
-        return GeminiSession(
+        return GoogleSession(
             model=self.__model,
             interaction_data_list=interaction_data_list
         )

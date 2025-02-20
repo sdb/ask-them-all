@@ -1,5 +1,12 @@
+from typing import Literal, Dict, Tuple, Type
+
 from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import (
+    BaseSettings,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+    TomlConfigSettingsSource,
+)
 
 
 class OpenSearchSettings(BaseModel):
@@ -17,25 +24,38 @@ class GroqSettings(BaseModel):
 
 
 class ClientSettings(BaseModel):
-    # TODO: support optional title and id config
-    enabled: bool = Field(False)
-    name: str | None = Field(None)
+    type: Literal["google", "groq"]
+    model_name: str
+
+
+class ChatBotSettings(BaseModel):
+    name: str
+    client: ClientSettings
 
 
 class Settings(BaseSettings):
     app_name: str = "AskThemAll"
-    opensearch: OpenSearchSettings | None = None
-    google: GoogleSettings | None = None
-    groq: GroqSettings | None = None
-    gemini_1_5_flash: ClientSettings = ClientSettings()
-    gemini_2_0_flash_exp: ClientSettings = ClientSettings()
-    groq_mixtral_8x7b_32768: ClientSettings = ClientSettings()
-    groq_llama_3_3_70b_versatile: ClientSettings = ClientSettings()
-    groq_gemma2_9b_it: ClientSettings = ClientSettings()
+    opensearch: OpenSearchSettings
+    google: GoogleSettings
+    groq: GroqSettings
+    chat_bots: Dict[str, ChatBotSettings]
 
-    def __getitem__(self, item):
-        return getattr(self, item)
+    model_config = SettingsConfigDict(
+        env_file='.env',
+        toml_file=['.askthemall/config.toml', '/config/config.toml'],
+        env_nested_delimiter='__')
 
-    class Config:
-        env_file = ".env"
-        env_nested_delimiter = '__'
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: Type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> Tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            dotenv_settings,
+            env_settings,
+            TomlConfigSettingsSource(settings_cls),
+        )

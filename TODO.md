@@ -24,3 +24,4 @@
 - CLI with click
 - cli to list clients and query model names
 - functionality to use prompts
+- show details of chatbot

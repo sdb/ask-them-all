@@ -3,9 +3,8 @@ import logging
 import google.generativeai as genai
 from dependency_injector import containers, providers
 
-from askthemall.clients.gemini import GeminiClient
+from askthemall.clients.google import GoogleClient
 from askthemall.clients.groq import GroqClient
-from askthemall.config import clients
 from askthemall.core.model import AskThemAllModel
 from askthemall.opensearch import OpenSearchDatabaseClient
 from askthemall.settings import Settings
@@ -16,36 +15,32 @@ logger = logging.getLogger(__name__)
 
 def init():
     container = containers.DynamicContainer()
+    # noinspection PyArgumentList
     settings = Settings()
 
     chat_client_providers = []
-    for client_config in clients:
-        client_settings = settings[client_config.key]
-        if client_settings.enabled:
-            logger.info(f"Client {client_config.key} is enabled")
-            if client_config.type == "gemini":
-                # TODO: only do this once and validate that api key exists
-                genai.configure(api_key=settings.google.api_key)
-                chat_client_providers.append(
-                    providers.Singleton(
-                        GeminiClient,
-                        client_id=client_config.id,
-                        model_name=client_config.model_name,
-                        name=client_settings.name if client_settings.name else client_config.name
-                    )
+    for chat_bot_id, chat_bot_settings in settings.chat_bots.items():
+        if chat_bot_settings.client.type == "google":
+            # TODO: only do this once and validate that api key exists
+            genai.configure(api_key=settings.google.api_key)
+            chat_client_providers.append(
+                providers.Singleton(
+                    GoogleClient,
+                    client_id=chat_bot_id,
+                    model_name=chat_bot_settings.client.model_name,
+                    name=chat_bot_settings.name
                 )
-            if client_config.type == "groq":
-                chat_client_providers.append(
-                    providers.Singleton(
-                        GroqClient,
-                        api_key=settings.groq.api_key,
-                        client_id=client_config.id,
-                        model_name=client_config.model_name,
-                        name=client_settings.name if client_settings.name else client_config.name
-                    )
+            )
+        if chat_bot_settings.client.type == "groq":
+            chat_client_providers.append(
+                providers.Singleton(
+                    GroqClient,
+                    api_key=settings.groq.api_key,
+                    client_id=chat_bot_id,
+                    model_name=chat_bot_settings.client.model_name,
+                    name=chat_bot_settings.name
                 )
-        else:
-            logger.info(f"Client {client_config.key} is disabled")
+            )
 
     container.database_client = providers.Singleton(
         OpenSearchDatabaseClient,

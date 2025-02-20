@@ -44,35 +44,115 @@ you can install it following the instructions on the [Poetry website](https://py
 
 ## ⚙️ Configuration
 
-1. **Environment Variables:**
+This section describes the configuration settings for the AskThemAll application. The configuration is structured using
+TOML format and **must be stored in a file named `config.toml` located in the `.askthemall` directory.**
 
-   Create a `.env` file in the root directory and set the necessary environment variables.
+### General Structure
 
-    1. **Rename the template:** Rename the `.env.example` file (included in the repository) to `.env`.
-    2. **Populate the variables:** Edit the `.env` file and replace the placeholder values with your actual credentials.
+The configuration is divided into several sections: `opensearch`, `google`, `groq`, and `chat_bots`. Each section
+contains settings specific to that service or feature.
 
-   Example `.env` file:
+### Sections
 
-    ```
-    GOOGLE__API_KEY=xxx
-    GROQ__API_KEY=xxx
+#### `[opensearch]`
 
-    OPENSEARCH__HOST=localhost
-    OPENSEARCH__PORT=9200
+This section defines the connection parameters for the OpenSearch instance used by AskThemAll.
 
-    GEMINI_2_0_FLASH_EXP__ENABLED=true
-    GEMINI_2_0_FLASH_EXP__NAME=Gemini 2.0
+* **`host` (string, required):**  The hostname or IP address of the OpenSearch server.
+    * **Example:** `"localhost"`
+* **`port` (integer, required):** The port number on which the OpenSearch server is listening.
+    * **Example:** `9200`
+* **`index_prefix` (string, optional):** A prefix to be added to all OpenSearch index names created by AskThemAll. This
+  is useful for organizing indices within your OpenSearch cluster. If not specified, the default is `askthemall_`'.
+    * **Example:** `"askthemall_dev_"`
 
-    GROQ_MIXTRAL_8X7B_32768__ENABLED=true
-    GROQ_MIXTRAL_8X7B_32768__NAME=Groq Mixtral
-    ```
+#### `[google]`
 
-2. **Database Setup:**
+This section contains the API key required to access Gemini AI services.
 
-   The application uses OpenSearch to store chat history. See the [🔍 OpenSearch Setup](#opensearch-setup) section below
-   for more details.
+* **`api_key` (string, required):** Your API key. This key is used for authenticating requests to Gemini AI services.
 
-### OpenSearch Setup
+#### `[groq]`
+
+This section contains the API key required to access Groq services.
+
+* **`api_key` (string, required):** Your Groq API key. This key is used for authenticating requests to the Groq
+  services.
+
+#### `[chat_bots]`
+
+This section defines the configuration for different chatbots that AskThemAll can use. Each chatbot is defined as a
+subsection within `[chat_bots]`. The name of the subsection acts as a unique identifier for that bot.
+
+* **`[chat_bots."<bot_id>"]` (subsection, required):** A section defining the configuration for a specific chatbot.
+  `<bot_id>` is a unique identifier for this bot.
+
+    * **`name` (string, required):**  A human-readable name for the chatbot. This name will be displayed in the
+      application.
+        * **Example:** `"Gemini 2.0"`
+    * **`client.type` (string, required):**  The type of client to use for this chatbot. This determines which API
+      provider to use. Valid values are `"google"` and `"groq"` (and potentially others).
+        * **Example:** `"google"`
+    * **`client.model_name` (string, required):** The specific model name to use for the chatbot with the chosen
+      client. This value depends on the selected client type. Refer to the documentation for the specific API provider
+      for available models.
+        * **Example:** `"gemini-2.0-flash-exp"`
+
+##### Example Chatbot Configurations:
+
+* **`[chat_bots."gemini-2.0-flash-exp"]`:**  Configuration for the Gemini 2.0 Flash experimental model via the Google
+  API.
+
+  ```toml
+  [chat_bots."gemini-2.0-flash-exp"]
+  name = "Gemini 2.0"
+  client.type = "google"
+  client.model_name = "gemini-2.0-flash-exp"
+  ```
+
+* **`[chat_bots.groq-mixtral-8x7b-32768]`:** Configuration for the Mistral 8x7b model via the Groq API.
+
+  ```toml
+  [chat_bots.groq-mixtral-8x7b-32768]
+  name = "Mistral"
+  client.type = "groq"
+  client.model_name = "mixtral-8x7b-32768"
+  ```
+
+### Important Notes
+
+* **The settings described in this document must be saved in a file named `config.toml` and placed in the `.askthemall`
+  directory in your user's home directory.**
+* The `client.model_name` values are specific to the API provider. Ensure you are using valid model names as defined by
+  Google, Groq, or any other provider you are using.
+* The configuration file format is TOML. Ensure your configuration file adheres to the TOML syntax.
+* Future versions of AskThemAll may include additional configuration options. Refer to the latest documentation for the
+  most up-to-date information.
+
+### Environment Variables
+
+Create a `.env` file in the root directory and set the necessary environment variables. These variables can override
+certain settings found in `config.toml`, particularly for sensitive information and connection details.
+
+* Rename the template: Rename the `.env.example` file (included in the repository) to `.env`.
+* Populate the variables: Edit the `.env` file and replace the placeholder values with your actual credentials.
+
+Example `.env` file:
+
+```
+GOOGLE__API_KEY=xxx
+GROQ__API_KEY=xxx
+
+OPENSEARCH__HOST=localhost
+OPENSEARCH__PORT=9200
+OPENSEARCH__INDEX_PREFIX=askthemall_dev_
+```
+
+**Note:** The environment variables for the API keys and the OpenSearch settings (host, port, index prefix) take
+precedence over any corresponding settings in the `config.toml` file. Chatbot enablement and naming are still configured
+exclusively in the `config.toml` file.
+
+## 📦 OpenSearch Setup
 
 This application utilizes OpenSearch to store and retrieve chat history. To ensure proper functionality, you'll need to
 configure OpenSearch.
@@ -83,7 +163,7 @@ configure OpenSearch.
   Docker, AWS OpenSearch Service, local installation). Make sure you have a running OpenSearch cluster accessible from
   your application.
 * You can find the documentation here: [https://opensearch.org/docs/latest/](https://opensearch.org/docs/latest/)
-* **Example using Docker Compose (for local testing):**
+* **Example using Docker Compose:**
 
   Create a file named `compose.yaml` with the following content:
 
