@@ -23,8 +23,12 @@ class GroqSettings(BaseModel):
     api_key: str
 
 
+class MistralSettings(BaseModel):
+    api_key: str
+
+
 class ClientSettings(BaseModel):
-    type: Literal["google", "groq"]
+    type: Literal["google", "groq", "mistral"]
     model_name: str
 
 
@@ -38,6 +42,7 @@ class Settings(BaseSettings):
     opensearch: OpenSearchSettings
     google: GoogleSettings
     groq: GroqSettings
+    mistral: MistralSettings
     chat_bots: Dict[str, ChatBotSettings]
 
     model_config = SettingsConfigDict(

@@ -7,7 +7,7 @@ different LLMs, manage their chat history, and revisit past conversations.
 ## ✨ Features
 
 * **Chat with Multiple LLMs:** Seamlessly switch between different Large Language Models (LLMs) such as Google's
-  Gemini and models supported by Groq.
+  Gemini, Mistral and models supported by Groq.
 * **Conversation History with OpenSearch:** Leverage OpenSearch to persistently store and manage your chat history.
 * **Streamlit UI:** Enjoy a clean and intuitive user interface powered by Streamlit for effortless interaction.
 * **Conversation Management:** View, delete, and revisit past conversations. Search within past conversations to
@@ -19,8 +19,7 @@ different LLMs, manage their chat history, and revisit past conversations.
 
 * **Python:** Primary programming language.
 * **Streamlit:** UI framework for building the user interface.
-* **Google Generative AI Python Library:** For interacting with Google's Gemini API.
-* **Groq Python Library:** For interacting with the Groq API.
+* **Langchain:** For interacting with LLMs.
 * **opensearch-py:** For database interaction with OpenSearch.
 * **Docker:** For running the application in a containerized environment.
 
@@ -79,6 +78,13 @@ This section contains the API key required to access Groq services.
 * **`api_key` (string, required):** Your Groq API key. This key is used for authenticating requests to the Groq
   services.
 
+#### `[mistral]`
+
+This section contains the API key required to access Mistral services.
+
+* **`api_key` (string, required):** Your Mistral API key. This key is used for authenticating requests to the Mistral
+  services.
+
 #### `[chat_bots]`
 
 This section defines the configuration for different chatbots that AskThemAll can use. Each chatbot is defined as a
@@ -91,7 +97,7 @@ subsection within `[chat_bots]`. The name of the subsection acts as a unique ide
       application.
         * **Example:** `"Gemini 2.0"`
     * **`client.type` (string, required):**  The type of client to use for this chatbot. This determines which API
-      provider to use. Valid values are `"google"` and `"groq"` (and potentially others).
+      provider to use. Valid values are `"google"`, `"groq"` and `"mistral"` (and potentially others).
         * **Example:** `"google"`
     * **`client.model_name` (string, required):** The specific model name to use for the chatbot with the chosen
       client. This value depends on the selected client type. Refer to the documentation for the specific API provider
@@ -142,6 +148,7 @@ Example `.env` file:
 ```
 GOOGLE__API_KEY=xxx
 GROQ__API_KEY=xxx
+MISTRAL__API_KEY=xxx
 
 OPENSEARCH__HOST=localhost
 OPENSEARCH__PORT=9200
