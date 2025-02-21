@@ -4,6 +4,7 @@ from langchain.chains.conversation.base import ConversationChain
 from langchain.memory import ConversationBufferMemory
 from langchain_core.language_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_mistralai import ChatMistralAI
 
 from askthemall.core.client import ChatSession, ChatClient, SUGGEST_TITLE_QUESTION
@@ -57,12 +58,16 @@ class LangChainClient(ChatClient):
         return self.__name
 
     def __create_llm(self) -> BaseChatModel:
-        if self.__llm_type == "mistral":
-            # noinspection PyTypeChecker
-            return ChatMistralAI(model=self.__model_name, mistral_api_key=self.__api_key)
-        if self.__llm_type == "google":
-            # noinspection PyTypeChecker
-            return ChatGoogleGenerativeAI(model=self.__model_name, google_api_key=self.__api_key)
+        match self.__llm_type:
+            case "mistral":
+                # noinspection PyTypeChecker
+                return ChatMistralAI(model=self.__model_name, mistral_api_key=self.__api_key)
+            case "google":
+                # noinspection PyTypeChecker
+                return ChatGoogleGenerativeAI(model=self.__model_name, google_api_key=self.__api_key)
+            case "groq":
+                # noinspection PyTypeChecker,PyArgumentList
+                return ChatGroq(model=self.__model_name, groq_api_key=self.__api_key)
 
     def start_session(self) -> LangChainSession:
         return LangChainSession(self.__create_llm())

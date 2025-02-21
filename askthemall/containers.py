@@ -1,12 +1,9 @@
 import logging
 
-import google.generativeai as genai
 from dependency_injector import containers, providers
 
-from askthemall.clients.google import GoogleClient
-from askthemall.clients.groq import GroqClient
-from askthemall.clients.lc import LangChainClient
 from askthemall.core.model import AskThemAllModel
+from askthemall.lc import LangChainClient
 from askthemall.opensearch import OpenSearchDatabaseClient
 from askthemall.settings import Settings
 from askthemall.view.model import AskThemAllViewModel
@@ -21,38 +18,21 @@ def init():
 
     chat_client_providers = []
     for chat_bot_id, chat_bot_settings in settings.chat_bots.items():
-        if chat_bot_settings.client.type == "google":
-            # TODO: only do this once and validate that api key exists
-            genai.configure(api_key=settings.google.api_key)
-            chat_client_providers.append(
-                providers.Singleton(
-                    GoogleClient,
-                    client_id=chat_bot_id,
-                    model_name=chat_bot_settings.client.model_name,
-                    name=chat_bot_settings.name
-                )
+        api_keys = {
+            "google": settings.google.api_key,
+            "groq": settings.groq.api_key,
+            "mistral": settings.mistral.api_key
+        }
+        chat_client_providers.append(
+            providers.Singleton(
+                LangChainClient,
+                llm_type=chat_bot_settings.client.type,
+                api_key=api_keys[chat_bot_settings.client.type],
+                client_id=chat_bot_id,
+                model_name=chat_bot_settings.client.model_name,
+                name=chat_bot_settings.name
             )
-        if chat_bot_settings.client.type == "groq":
-            chat_client_providers.append(
-                providers.Singleton(
-                    GroqClient,
-                    api_key=settings.groq.api_key,
-                    client_id=chat_bot_id,
-                    model_name=chat_bot_settings.client.model_name,
-                    name=chat_bot_settings.name
-                )
-            )
-        if chat_bot_settings.client.type == "mistral":
-            chat_client_providers.append(
-                providers.Singleton(
-                    LangChainClient,
-                    llm_type=chat_bot_settings.client.type,
-                    api_key=settings.mistral.api_key,
-                    client_id=chat_bot_id,
-                    model_name=chat_bot_settings.client.model_name,
-                    name=chat_bot_settings.name
-                )
-            )
+        )
 
     container.database_client = providers.Singleton(
         OpenSearchDatabaseClient,
