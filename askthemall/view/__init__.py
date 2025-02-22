@@ -45,7 +45,7 @@ def render(view_model: AskThemAllViewModel):
     with st.sidebar:
         if view_model.current_chat:
             with st.container(key='sidebar-outline'):
-                st.title('Outline')
+                st.title(':material/List: Outline')
 
                 with st.expander('Questions', expanded=True):
                     for interaction in view_model.current_chat.interactions:
@@ -55,7 +55,7 @@ def render(view_model: AskThemAllViewModel):
                             view_model.current_chat.goto_interaction(interaction)
 
         with st.container(key='sidebar-chats'):
-            st.title("Chats")
+            st.title(":material/Chat: Chats")
 
             search_col1, search_col2 = st.columns([10, 1])
             with search_col1:
