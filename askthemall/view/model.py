@@ -3,9 +3,11 @@ from dataclasses import dataclass
 from datetime import datetime
 
 import streamlit as st
+from dependency_injector.wiring import inject, Provide
 
 from askthemall.core.model import ChatModel, ChatBotModel, AskThemAllModel, ChatListModel
 from askthemall.view.helpers import ScrollIntoView
+from askthemall.view.settings import ViewSettings
 
 
 class ChatHubViewModelListener(ABC):
@@ -249,10 +251,12 @@ class ChatViewModel:
 
 class AskThemAllViewModel(ChatHubViewModelListener):
 
-    def __init__(self, app_title: str, ask_them_all_model: AskThemAllModel):
-        self.__app_title = app_title
-        self.__ask_them_all_model = ask_them_all_model
-        self.__chat_bots = ask_them_all_model.chat_bots
+    @inject
+    def __init__(self,
+                 view_settings: ViewSettings = Provide["view_settings"]):
+        self.__app_title = view_settings.app_title
+        self.__ask_them_all_model = AskThemAllModel()
+        self.__chat_bots = self.__ask_them_all_model.chat_bots
         self.__search_filter = None
         if 'initialized' not in st.session_state:
             st.session_state.initialized = True

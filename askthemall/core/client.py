@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import List
-
-from askthemall.core.persistence import InteractionData
 
 SUGGEST_TITLE_QUESTION = [
     "Generate a short descriptive title with minimum 3 words and maximum 15 words for this chat",
@@ -13,6 +12,12 @@ SUGGEST_TITLE_QUESTION = [
     "Your response should be a single line of text with no more than 15 words.",
     "Do not include any other text."
 ]
+
+
+@dataclass
+class ChatInteraction:
+    question: str
+    answer: str
 
 
 class ChatSession(ABC):
@@ -43,5 +48,5 @@ class ChatClient(ABC):
         pass
 
     @abstractmethod
-    def restore_session(self, interaction_data_list: List[InteractionData]) -> ChatSession:
+    def restore_session(self, interaction_data_list: List[ChatInteraction]) -> ChatSession:
         pass

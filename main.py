@@ -1,3 +1,4 @@
-from askthemall import app
+from askthemall import containers, app
 
+container = containers.init()
 app.run()

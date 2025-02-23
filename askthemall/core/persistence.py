@@ -54,47 +54,53 @@ class DataListResult(Generic[Data]):
         return self.__total_results
 
 
-class DatabaseClient(ABC):
+class Repository(ABC, Generic[Data]):
 
     @abstractmethod
-    def save_chat(self, chat: ChatData):
+    def save(self, data: Data):
         pass
 
     @abstractmethod
-    def get_chat_by_id(self, chat_id) -> ChatData:
+    def get_by_id(self, data_id) -> Data:
         pass
 
     @abstractmethod
-    def save_interaction(self, interaction: InteractionData):
+    def find_all(self) -> list[Data]:
         pass
 
     @abstractmethod
-    def list_all_chats(self, chat_bot_id, max_results=100) -> DataListResult[ChatData]:
+    def delete_by_id(self, data_id):
+        pass
+
+
+class ChatRepository(Repository[ChatData], ABC):
+
+    @abstractmethod
+    def find_all_by_chat_bot_id(self, chat_bot_id, max_results) -> DataListResult[ChatData]:
         pass
 
     @abstractmethod
-    def filter_chats(self, search_filter: str, max_results=100) -> DataListResult[ChatData]:
+    def search_chats(self, search_filter: str, max_results=100) -> DataListResult[ChatData]:
+        pass
+
+
+class ChatBotRepository(Repository[ChatBotData], ABC):
+    pass
+
+
+class InteractionRepository(Repository[InteractionData], ABC):
+    pass
+
+    @abstractmethod
+    def find_all_by_chat_id(self, chat_id: str) -> list[InteractionData]:
         pass
 
     @abstractmethod
-    def list_all_interactions(self, chat_id) -> list[InteractionData]:
+    def delete_all_by_chat_id(self, chat_id):
         pass
 
-    @abstractmethod
-    def list_all_chat_bots(self) -> List[ChatBotData]:
-        pass
 
-    @abstractmethod
-    def delete_chat(self, chat_id):
-        pass
-
-    @abstractmethod
-    def delete_interactions(self, chat_id):
-        pass
-
-    @abstractmethod
-    def save_chat_bot(self, chat_bot: ChatBotData):
-        pass
+class DatabaseMigration(ABC):
 
     @abstractmethod
     def migrate(self):

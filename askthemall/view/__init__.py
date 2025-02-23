@@ -32,7 +32,9 @@ def render_chat_list(chat_list: ChatListViewModel):
                 chat_list.load_more_chats()
 
 
-def render(view_model: AskThemAllViewModel):
+def render():
+    view_model = AskThemAllViewModel()
+
     st.set_page_config(
         page_title=view_model.app_title,
         page_icon=":material/smart_toy:",

@@ -1,12 +1,13 @@
 import logging
 
 from dependency_injector import containers, providers
+from opensearchpy import OpenSearch
 
-from askthemall.core.model import AskThemAllModel
 from askthemall.lc import LangChainClient
-from askthemall.opensearch import OpenSearchDatabaseClient
+from askthemall.opensearch import OpenSearchDatabaseMigration, OpenSearchChatBotRepository, OpenSearchChatRepository, \
+    OpenSearchInteractionRepository, IndexNames
 from askthemall.settings import Settings
-from askthemall.view.model import AskThemAllViewModel
+from askthemall.view.settings import ViewSettings
 
 logger = logging.getLogger(__name__)
 
@@ -34,25 +35,61 @@ def init():
             )
         )
 
-    container.database_client = providers.Singleton(
-        OpenSearchDatabaseClient,
-        host=settings.opensearch.host,
-        port=settings.opensearch.port,
-        index_prefix=settings.opensearch.index_prefix
-    )
-
     container.chat_clients = providers.List(*chat_client_providers)
 
-    container.ask_them_all_model = providers.Singleton(
-        AskThemAllModel,
-        database_client=container.database_client,
-        chat_clients=container.chat_clients
+    container.opensearch = providers.Singleton(
+        OpenSearch,
+        hosts=[{'host': settings.opensearch.host, 'port': settings.opensearch.port}],
+        http_compress=True,
+        use_ssl=False,
+        verify_certs=False,
+        ssl_assert_hostname=False,
+        ssl_show_warn=False
     )
 
-    container.chat_hub_view_model = providers.Singleton(
-        AskThemAllViewModel,
-        app_title=settings.app_name,
-        ask_them_all_model=container.ask_them_all_model,
+    container.index_names = providers.Singleton(
+        IndexNames,
+        prefix=settings.opensearch.index_prefix
     )
+
+    container.chat_bot_repository = providers.Singleton(
+        OpenSearchChatBotRepository,
+        client=container.opensearch,
+        index_names=container.index_names
+    )
+
+    container.chat_repository = providers.Singleton(
+        OpenSearchChatRepository,
+        client=container.opensearch,
+        index_names=container.index_names
+    )
+
+    container.interaction_repository = providers.Singleton(
+        OpenSearchInteractionRepository,
+        client=container.opensearch,
+        index_names=container.index_names
+    )
+
+    container.database_migration = providers.Singleton(
+        OpenSearchDatabaseMigration,
+        chat_bot_repository=container.chat_bot_repository,
+        chat_repository=container.chat_repository,
+        interaction_repository=container.interaction_repository,
+    )
+
+    container.view_settings = providers.Singleton(
+        ViewSettings,
+        app_title=settings.app_name
+    )
+
+    container.wire(modules=[
+        "askthemall.core.persistence",
+        "askthemall.core.model",
+        "askthemall.lc",
+        "askthemall.opensearch",
+        "askthemall.app",
+        "askthemall.view",
+        "askthemall.view.model",
+    ])
 
     return container

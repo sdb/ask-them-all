@@ -1,79 +1,119 @@
 import logging
+from abc import ABC, abstractmethod
 from typing import List
 
 from opensearchpy import OpenSearch
 
-from askthemall.core.persistence import DatabaseClient, ChatData, InteractionData, DataListResult, ChatBotData
+from askthemall.core.persistence import DatabaseMigration, ChatData, InteractionData, DataListResult, ChatBotData, \
+    Repository, Data, InteractionRepository, ChatRepository
 
 logger = logging.getLogger(__name__)
 
 
-class OpenSearchDatabaseClient(DatabaseClient):
+class IndexNames:
+    CHAT_BOTS = 'chat_bots'
+    CHATS = 'chats'
+    INTERACTIONS = 'interactions'
 
-    def __init__(self, host, port, index_prefix=''):
-        self.client = OpenSearch(
-            hosts=[{'host': host, 'port': port}],
-            http_compress=True,
-            use_ssl=False,
-            verify_certs=False,
-            ssl_assert_hostname=False,
-            ssl_show_warn=False
-        )
-        self.__index_prefix = index_prefix
+    def __init__(self, prefix):
+        self.__prefix = prefix
 
     @property
-    def __chats_index_name(self):
-        return f"{self.__index_prefix}chats"
+    def chat_bots(self):
+        return f'{self.__prefix}{self.CHAT_BOTS}'
 
     @property
-    def __interactions_index_name(self):
-        return f"{self.__index_prefix}interactions"
+    def chats(self):
+        return f'{self.__prefix}{self.CHATS}'
 
     @property
-    def __chat_bots_index_name(self):
-        return f"{self.__index_prefix}chat_bots"
+    def interactions(self):
+        return f'{self.__prefix}{self.INTERACTIONS}'
 
-    def save_chat(self, chat: ChatData):
-        self.client.index(
-            index=self.__chats_index_name,
-            body=chat.__dict__,
-            id=chat.id,
+
+class OpenSearchRepository(Repository[Data], ABC):
+
+    def __init__(self, client: OpenSearch, alias):
+        self._client = client
+        self._alias = alias
+
+    @abstractmethod
+    def _to_data(self, hit):
+        pass
+
+    def _get_index_creation_body(self) -> dict:
+        return {}
+
+    def create_index_if_not_exists(self):
+        index_name = f'{self._alias}_v1'
+        if not self._client.indices.exists(index=self._alias):
+            self._client.indices.create(index=index_name, body=self._get_index_creation_body())
+            self._client.indices.put_alias(index=index_name, name=self._alias)
+            logger.info(f"Index '{index_name}' and alias '{self._alias}' created")
+        else:
+            logger.info(f"Index '{index_name}' already exists")
+
+    def save(self, data: Data):
+        self._client.index(
+            index=self._alias,
+            body=data.__dict__,
+            id=data.id,
             refresh=True,
             op_type='index'
         )
 
-    def get_chat_by_id(self, chat_id) -> ChatData:
-        response = self.client.get(index=self.__chats_index_name, id=chat_id)
-        return ChatData(**response['_source'])
+    def get_by_id(self, data_id) -> Data:
+        response = self._client.get(index=self._alias, id=data_id)
+        return self._to_data(response['_source'])
 
-    def save_interaction(self, interaction: InteractionData):
-        self.client.index(
-            index=self.__interactions_index_name,
-            body=interaction.__dict__,
-            id=interaction.id,
-            refresh=True,
-            op_type='index'
+    def find_all(self) -> List[Data]:
+        response = self._client.search(
+            index=self._alias,
+            body={
+                "query": {
+                    "match_all": {}
+                }
+            }
         )
+        all_data = [self._to_data(hit["_source"]) for hit in response["hits"]["hits"]]
+        return all_data
 
-    def save_chat_bot(self, chat_bot: ChatBotData):
-        self.client.index(
-            index=self.__chat_bots_index_name,
-            body=chat_bot.__dict__,
-            id=chat_bot.id,
-            refresh=True,
-            op_type='index'
-        )
+    def delete_by_id(self, data_id):
+        self._client.delete(index=self._alias, id=data_id, refresh=True)
 
-    def delete_chat(self, chat_id):
-        self.client.delete(index=self.__chats_index_name, id=chat_id, refresh=True)
 
-    def delete_interactions(self, chat_id):
-        self.client.delete_by_query(index=self.__interactions_index_name,
-                                    body={"query": {"term": {"chat_id.keyword": chat_id}}})
+class OpenSearchChatBotRepository(OpenSearchRepository[ChatBotData]):
 
-    def list_all_chats(self, chat_bot_id, max_results=100) -> DataListResult[ChatData]:
-        response = self.client.search(
-            index=self.__chats_index_name,
+    def __init__(self, client: OpenSearch, index_names: IndexNames):
+        super().__init__(client, index_names.chat_bots)
+
+    def _to_data(self, hit):
+        return ChatBotData(**hit)
+
+
+class OpenSearchChatRepository(OpenSearchRepository[ChatData], ChatRepository):
+
+    def __init__(self, client: OpenSearch, index_names: IndexNames):
+        super().__init__(client, index_names.chats)
+        self.__index_names = index_names
+
+    def _to_data(self, hit):
+        return ChatData(**hit)
+
+    def _get_index_creation_body(self) -> dict:
+        return {
+            "mappings": {
+                "properties": {
+                    "created_at": {
+                        "type": "date"
+                    }
+                }
+            }
+        }
+
+    def find_all_by_chat_bot_id(self, chat_bot_id, max_results) -> DataListResult[ChatData]:
+        response = self._client.search(
+            index=self._alias,
             body={
                 "query": {
                     "term": {
@@ -90,14 +130,14 @@ class OpenSearchDatabaseClient(DatabaseClient):
                 "size": max_results
             }
         )
-        chats = [ChatData(**hit["_source"]) for hit in response["hits"]["hits"]]
+        chats = [self._to_data(hit["_source"]) for hit in response["hits"]["hits"]]
         total_results = response["hits"]["total"]["value"]
         return DataListResult(data=chats, total_results=total_results)
 
-    def filter_chats(self, search_filter: str, max_results=100) -> DataListResult[ChatData]:
+    def search_chats(self, search_filter: str, max_results=100) -> DataListResult[ChatData]:
         # TODO: currently only 1000 distinct chats are supported, should use pagination using composite aggregation to support unlimited results
-        chat_ids_response = self.client.search(
-            index=self.__interactions_index_name,
+        chat_ids_response = self._client.search(
+            index=self.__index_names.interactions,
             body={
                 "query": {
                     "bool": {
@@ -129,8 +169,8 @@ class OpenSearchDatabaseClient(DatabaseClient):
         )
         chat_ids = list(
             set([bucket["key"] for bucket in chat_ids_response["aggregations"]["distinct_values"]["buckets"]]))
-        chats_response = self.client.search(
-            index=self.__chats_index_name,
+        chats_response = self._client.search(
+            index=self.__index_names.chats,
             body={
                 "query": {
                     "terms": {
@@ -147,13 +187,33 @@ class OpenSearchDatabaseClient(DatabaseClient):
                 "size": max_results
             }
         )
-        chats = [ChatData(**hit["_source"]) for hit in chats_response["hits"]["hits"]]
+        chats = [self._to_data(hit["_source"]) for hit in chats_response["hits"]["hits"]]
         total_results = chats_response["hits"]["total"]["value"]
         return DataListResult(data=chats, total_results=total_results)
 
-    def list_all_interactions(self, chat_id) -> list[InteractionData]:
-        response = self.client.search(
-            index=self.__interactions_index_name,
+
+class OpenSearchInteractionRepository(OpenSearchRepository[InteractionData], InteractionRepository):
+
+    def __init__(self, client: OpenSearch, index_names: IndexNames):
+        super().__init__(client, index_names.interactions)
+
+    def _to_data(self, hit):
+        return InteractionData(**hit)
+
+    def _get_index_creation_body(self) -> dict:
+        return {
+            "mappings": {
+                "properties": {
+                    "asked_at": {
+                        "type": "date"
+                    }
+                }
+            }
+        }
+
+    def find_all_by_chat_id(self, chat_id: str) -> list[InteractionData]:
+        response = self._client.search(
+            index=self._alias,
             body={
                 "query": {
                     "term": {
@@ -169,47 +229,24 @@ class OpenSearchDatabaseClient(DatabaseClient):
                 ]
             }
         )
-        interactions = [InteractionData(**hit["_source"]) for hit in response["hits"]["hits"]]
-        return interactions
+        return [self._to_data(hit["_source"]) for hit in response["hits"]["hits"]]
 
-    def list_all_chat_bots(self) -> List[ChatBotData]:
-        response = self.client.search(
-            index=self.__chat_bots_index_name,
-            body={
-                "query": {
-                    "match_all": {}
-                }
-            }
-        )
-        chat_bots = [ChatBotData(**hit["_source"]) for hit in response["hits"]["hits"]]
-        return chat_bots
+    def delete_all_by_chat_id(self, chat_id):
+        self._client.delete_by_query(index=self._alias,
+                                     body={"query": {"term": {"chat_id.keyword": chat_id}}})
 
-    def __create_index_if_not_exists(self, name, body):
-        index_name = f'{name}_v1'
-        if not self.client.indices.exists(index=name):
-            self.client.indices.create(index=index_name, body=body)
-            self.client.indices.put_alias(index=index_name, name=name)
-            logger.info(f"Index '{index_name}' and alias '{name}' created")
-        else:
-            logger.info(f"Index '{name}' already exists")
+
+class OpenSearchDatabaseMigration(DatabaseMigration):
+
+    def __init__(self,
+                 chat_bot_repository: OpenSearchChatBotRepository,
+                 chat_repository: OpenSearchChatRepository,
+                 interaction_repository: OpenSearchInteractionRepository):
+        self.__chat_bot_repository = chat_bot_repository
+        self.__chat_repository = chat_repository
+        self.__interaction_repository = interaction_repository
 
     def migrate(self):
-        self.__create_index_if_not_exists(name=self.__chats_index_name, body={
-            "mappings": {
-                "properties": {
-                    "created_at": {
-                        "type": "date"
-                    }
-                }
-            }
-        })
-        self.__create_index_if_not_exists(name=self.__interactions_index_name, body={
-            "mappings": {
-                "properties": {
-                    "asked_at": {
-                        "type": "date"
-                    }
-                }
-            }
-        })
-        self.__create_index_if_not_exists(name=self.__chat_bots_index_name, body={})
+        self.__chat_bot_repository.create_index_if_not_exists()
+        self.__chat_repository.create_index_if_not_exists()
+        self.__interaction_repository.create_index_if_not_exists()
