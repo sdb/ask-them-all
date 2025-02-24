@@ -13,23 +13,33 @@ logger = logging.getLogger(__name__)
 def render_chat_list(chat_list: ChatListViewModel):
     with st.expander(chat_list.title, icon=chat_list.icon, expanded=chat_list.expanded):
         if chat_list.new_chat_enabled:
-            if st.button("New chat ...", type='tertiary', use_container_width=True,
-                         key=f'new-chat-{chat_list.id}'):
-                chat_list.new_chat()
-        for chat in chat_list.chats:
-            col1, col2 = st.columns([1, 10])
+            col1, col2, col3 = st.columns([1, 20, 2])
             with col1:
-                if st.button(label='', icon=":material/delete_forever:", type='tertiary',
-                             key=f'delete-chat-{chat.chat_id}'):
-                    chat.remove()
+                st.markdown(':material/add:')
+            with col2:
+                if st.button("New chat", type='tertiary', use_container_width=True,
+                             key=f'new-chat-{chat_list.id}'):
+                    chat_list.new_chat()
+        for chat in chat_list.chats:
+            col1, col2, col3 = st.columns([1, 20, 2])
+            with col1:
+                st.markdown(':material/subject:')
             with col2:
                 if st.button(chat.title, type='tertiary', help=chat.title, use_container_width=True,
                              key=f'view-chat-{chat.chat_id}'):
                     chat_list.switch_chat(chat.chat_id)
+            with col3:
+                if st.button(label='', icon=":material/delete_forever:", type='tertiary',
+                             key=f'delete-chat-{chat.chat_id}'):
+                    chat.remove()
         if chat_list.has_more_chats:
-            if st.button("Load more ...", type='tertiary', use_container_width=True,
-                         key=f'load-more-chats-{chat_list.id}'):
-                chat_list.load_more_chats()
+            col1, col2, col3 = st.columns([1, 20, 2])
+            with col1:
+                st.markdown(':material/keyboard_arrow_down:')
+            with col2:
+                if st.button("Load more", type='tertiary', use_container_width=True,
+                             key=f'load-more-chats-{chat_list.id}'):
+                    chat_list.load_more_chats()
 
 
 def render():
