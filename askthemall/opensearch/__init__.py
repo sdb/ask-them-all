@@ -5,7 +5,7 @@ from typing import List
 from opensearchpy import OpenSearch
 
 from askthemall.core.persistence import DatabaseMigration, ChatData, InteractionData, DataListResult, ChatBotData, \
-    Repository, Data, InteractionRepository, ChatRepository
+    Repository, InteractionRepository, ChatRepository, D
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class IndexNames:
         return f'{self.__prefix}{self.INTERACTIONS}'
 
 
-class OpenSearchRepository(Repository[Data], ABC):
+class OpenSearchRepository(Repository[D], ABC):
 
     def __init__(self, client: OpenSearch, alias):
         self._client = client
@@ -53,7 +53,7 @@ class OpenSearchRepository(Repository[Data], ABC):
         else:
             logger.info(f"Index '{index_name}' already exists")
 
-    def save(self, data: Data):
+    def save(self, data: D):
         self._client.index(
             index=self._alias,
             body=data.__dict__,
@@ -62,11 +62,11 @@ class OpenSearchRepository(Repository[Data], ABC):
             op_type='index'
         )
 
-    def get_by_id(self, data_id) -> Data:
+    def get_by_id(self, data_id) -> D:
         response = self._client.get(index=self._alias, id=data_id)
         return self._to_data(response['_source'])
 
-    def find_all(self) -> List[Data]:
+    def find_all(self) -> List[D]:
         response = self._client.search(
             index=self._alias,
             body={

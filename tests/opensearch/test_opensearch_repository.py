@@ -36,9 +36,9 @@ class DummyDataFactory(factory.Factory):
 
 @fixture
 def dummy_repository(client):
-    test_repository = DummyRepository(client)
+    repository = DummyRepository(client)
     client.indices.create(index='test', body={})
-    yield test_repository
+    yield repository
     client.indices.delete(index='test')
 
 

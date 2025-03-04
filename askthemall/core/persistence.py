@@ -5,8 +5,12 @@ from typing import TypeVar, Generic, List
 
 
 @dataclass
-class InteractionData:
+class Data:
     id: str
+
+
+@dataclass
+class InteractionData(Data):
     question: str
     answer: str
     asked_at: datetime
@@ -18,8 +22,7 @@ class InteractionData:
 
 
 @dataclass
-class ChatData:
-    id: str
+class ChatData(Data):
     slug: str
     title: str
     created_at: datetime
@@ -31,22 +34,21 @@ class ChatData:
 
 
 @dataclass
-class ChatBotData:
-    id: str
+class ChatBotData(Data):
     name: str
 
 
-Data = TypeVar('Data')
+D = TypeVar('D', bound=Data)
 
 
-class DataListResult(Generic[Data]):
+class DataListResult(Generic[D]):
 
-    def __init__(self, data: List[Data], total_results):
+    def __init__(self, data: List[D], total_results):
         self.__data = data
         self.__total_results = total_results
 
     @property
-    def data(self) -> List[Data]:
+    def data(self) -> List[D]:
         return self.__data
 
     @property
@@ -54,18 +56,18 @@ class DataListResult(Generic[Data]):
         return self.__total_results
 
 
-class Repository(ABC, Generic[Data]):
+class Repository(ABC, Generic[D]):
 
     @abstractmethod
-    def save(self, data: Data):
+    def save(self, data: D):
         pass
 
     @abstractmethod
-    def get_by_id(self, data_id) -> Data:
+    def get_by_id(self, data_id) -> D:
         pass
 
     @abstractmethod
-    def find_all(self) -> list[Data]:
+    def find_all(self) -> list[D]:
         pass
 
     @abstractmethod
