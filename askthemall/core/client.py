@@ -10,7 +10,7 @@ SUGGEST_TITLE_QUESTION = [
     "It should indicate the purpose of the chat.",
     "And it should be in the language of the initial question.",
     "Your response should be a single line of text with no more than 15 words.",
-    "Do not include any other text."
+    "Do not include any other text.",
 ]
 
 
@@ -21,7 +21,6 @@ class ChatInteraction:
 
 
 class ChatSession(ABC):
-
     @abstractmethod
     def ask(self, question) -> str:
         pass
@@ -32,7 +31,6 @@ class ChatSession(ABC):
 
 
 class ChatClient(ABC):
-
     @property
     @abstractmethod
     def id(self) -> str:
@@ -48,5 +46,7 @@ class ChatClient(ABC):
         pass
 
     @abstractmethod
-    def restore_session(self, interaction_data_list: List[ChatInteraction]) -> ChatSession:
+    def restore_session(
+        self, interaction_data_list: List[ChatInteraction]
+    ) -> ChatSession:
         pass

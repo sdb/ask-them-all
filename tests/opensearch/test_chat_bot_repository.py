@@ -13,13 +13,15 @@ def test_data(opensearch, index_names):
             refresh=True,
         )
     yield
-    indices = ['askthemall_test_chats', 'askthemall_test_chat_bots', 'askthemall_test_interactions']
+    indices = [
+        "askthemall_test_chats",
+        "askthemall_test_chat_bots",
+        "askthemall_test_interactions",
+    ]
     for index_name in indices:
-        opensearch.get_client().delete_by_query(index=index_name, body={
-            "query": {
-                "match_all": {}
-            }
-        })
+        opensearch.get_client().delete_by_query(
+            index=index_name, body={"query": {"match_all": {}}}
+        )
     opensearch.get_client().indices.refresh()
 
 

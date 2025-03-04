@@ -46,9 +46,10 @@ class Settings(BaseSettings):
     chat_bots: Dict[str, ChatBotSettings]
 
     model_config = SettingsConfigDict(
-        env_file='.env',
-        toml_file=['.askthemall/config.toml', '/config/config.toml'],
-        env_nested_delimiter='__')
+        env_file=".env",
+        toml_file=[".askthemall/config.toml", "/config/config.toml"],
+        env_nested_delimiter="__",
+    )
 
     @classmethod
     def settings_customise_sources(

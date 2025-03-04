@@ -5,13 +5,17 @@ from datetime import datetime
 import streamlit as st
 from dependency_injector.wiring import inject, Provide
 
-from askthemall.core.model import ChatModel, ChatBotModel, AskThemAllModel, ChatListModel
+from askthemall.core.model import (
+    ChatModel,
+    ChatBotModel,
+    AskThemAllModel,
+    ChatListModel,
+)
 from askthemall.view.helpers import ScrollIntoView
 from askthemall.view.settings import ViewSettings
 
 
 class ChatHubViewModelListener(ABC):
-
     @abstractmethod
     def on_new_chat_started(self, chat: ChatModel):
         pass
@@ -34,9 +38,7 @@ class ChatHubViewModelListener(ABC):
 
 
 class ChatListItemViewModel:
-
-    def __init__(self, chat: ChatModel,
-                 chat_hub_listener: ChatHubViewModelListener):
+    def __init__(self, chat: ChatModel, chat_hub_listener: ChatHubViewModelListener):
         self.__chat = chat
         self.__chat_hub_listener = chat_hub_listener
 
@@ -55,15 +57,18 @@ class ChatListItemViewModel:
 
 
 class ChatListViewModel(ABC):
-
-    def __init__(self, ask_them_all_model: AskThemAllModel, chat_hub_listener: ChatHubViewModelListener):
+    def __init__(
+        self,
+        ask_them_all_model: AskThemAllModel,
+        chat_hub_listener: ChatHubViewModelListener,
+    ):
         self.__ask_them_all_model = ask_them_all_model
         self.__chat_hub_listener = chat_hub_listener
         if self.id not in st.session_state.chat_lists_config:
             st.session_state.chat_lists_config[self.id] = {
-                'max_results': self.chats_per_page
+                "max_results": self.chats_per_page
             }
-        max_results = st.session_state.chat_lists_config[self.id]['max_results']
+        max_results = st.session_state.chat_lists_config[self.id]["max_results"]
         chat_list = self.fetch_chats(max_results)
         self.__total_results = chat_list.total_results
         self.__chats = chat_list.chats
@@ -104,7 +109,12 @@ class ChatListViewModel(ABC):
 
     @property
     def chats(self) -> list[ChatListItemViewModel]:
-        return list(map(lambda c: ChatListItemViewModel(c, self.__chat_hub_listener), self.__chats))
+        return list(
+            map(
+                lambda c: ChatListItemViewModel(c, self.__chat_hub_listener),
+                self.__chats,
+            )
+        )
 
     @property
     def total_results(self) -> int:
@@ -120,14 +130,19 @@ class ChatListViewModel(ABC):
         return self.total_results > len(self.chats)
 
     def load_more_chats(self):
-        st.session_state.chat_lists_config[self.id]['max_results'] += self.chats_per_page
+        st.session_state.chat_lists_config[self.id]["max_results"] += (
+            self.chats_per_page
+        )
         st.rerun()
 
 
 class ChatBotViewModel(ChatListViewModel):
-
-    def __init__(self, ask_them_all_model: AskThemAllModel, chat_bot: ChatBotModel,
-                 chat_hub_listener: ChatHubViewModelListener):
+    def __init__(
+        self,
+        ask_them_all_model: AskThemAllModel,
+        chat_bot: ChatBotModel,
+        chat_hub_listener: ChatHubViewModelListener,
+    ):
         self.__ask_them_all_model = ask_them_all_model
         self.__chat_hub_listener = chat_hub_listener
         self.__chat_bot = chat_bot
@@ -143,7 +158,11 @@ class ChatBotViewModel(ChatListViewModel):
 
     @property
     def icon(self) -> str:
-        return ':material/smart_toy:' if self.new_chat_enabled else ':material/inventory_2:'
+        return (
+            ":material/smart_toy:"
+            if self.new_chat_enabled
+            else ":material/inventory_2:"
+        )
 
     @property
     def title(self) -> str:
@@ -159,10 +178,12 @@ class ChatBotViewModel(ChatListViewModel):
 
 
 class ChatSearchResultViewModel(ChatListViewModel):
-
-    def __init__(self, search_filter: str,
-                 ask_them_all_model: AskThemAllModel,
-                 chat_hub_listener: ChatHubViewModelListener):
+    def __init__(
+        self,
+        search_filter: str,
+        ask_them_all_model: AskThemAllModel,
+        chat_hub_listener: ChatHubViewModelListener,
+    ):
         self.__ask_them_all_model = ask_them_all_model
         self.__chat_hub_listener = chat_hub_listener
         self.__search_filter = search_filter
@@ -173,15 +194,15 @@ class ChatSearchResultViewModel(ChatListViewModel):
 
     @property
     def title(self) -> str:
-        return 'Search results'
+        return "Search results"
 
     @property
     def id(self) -> str:
-        return 'search-results'
+        return "search-results"
 
     @property
     def icon(self) -> str:
-        return ':material/search:'
+        return ":material/search:"
 
     @property
     def expanded(self) -> bool:
@@ -205,9 +226,7 @@ class ChatInteractionViewModel:
 
 
 class ChatViewModel:
-
-    def __init__(self, chat: ChatModel,
-                 chat_hub_listener: ChatHubViewModelListener):
+    def __init__(self, chat: ChatModel, chat_hub_listener: ChatHubViewModelListener):
         self.__chat = chat
         self.__chat_hub_listener = chat_hub_listener
 
@@ -233,12 +252,17 @@ class ChatViewModel:
 
     @property
     def interactions(self) -> list[ChatInteractionViewModel]:
-        return list(map(lambda i: ChatInteractionViewModel(
-            interaction_id=i.id,
-            question=i.question,
-            answer=i.answer,
-            asked_at=i.asked_at
-        ), self.__chat.interactions))
+        return list(
+            map(
+                lambda i: ChatInteractionViewModel(
+                    interaction_id=i.id,
+                    question=i.question,
+                    answer=i.answer,
+                    asked_at=i.asked_at,
+                ),
+                self.__chat.interactions,
+            )
+        )
 
     def ask_question(self, question):
         self.__chat.ask_question(question)
@@ -250,21 +274,19 @@ class ChatViewModel:
 
 
 class AskThemAllViewModel(ChatHubViewModelListener):
-
     @inject
-    def __init__(self,
-                 view_settings: ViewSettings = Provide["view_settings"]):
+    def __init__(self, view_settings: ViewSettings = Provide["view_settings"]):
         self.__app_title = view_settings.app_title
         self.__ask_them_all_model = AskThemAllModel()
         self.__chat_bots = self.__ask_them_all_model.chat_bots
         self.__search_filter = None
-        if 'initialized' not in st.session_state:
+        if "initialized" not in st.session_state:
             st.session_state.initialized = True
             st.session_state.chat_lists_config = {}
 
     @property
     def __chat(self):
-        return st.session_state.chat if 'chat' in st.session_state else None
+        return st.session_state.chat if "chat" in st.session_state else None
 
     @__chat.setter
     def __chat(self, chat):
@@ -272,7 +294,7 @@ class AskThemAllViewModel(ChatHubViewModelListener):
 
     @property
     def __scroll_to(self):
-        return st.session_state.scroll_to if 'scroll_to' in st.session_state else None
+        return st.session_state.scroll_to if "scroll_to" in st.session_state else None
 
     @__scroll_to.setter
     def __scroll_to(self, to):
@@ -288,7 +310,7 @@ class AskThemAllViewModel(ChatHubViewModelListener):
             return ChatSearchResultViewModel(
                 search_filter=self.__search_filter,
                 ask_them_all_model=self.__ask_them_all_model,
-                chat_hub_listener=self
+                chat_hub_listener=self,
             )
         else:
             return None
@@ -300,7 +322,7 @@ class AskThemAllViewModel(ChatHubViewModelListener):
             chat_list = ChatBotViewModel(
                 ask_them_all_model=self.__ask_them_all_model,
                 chat_bot=chat_bot,
-                chat_hub_listener=self
+                chat_hub_listener=self,
             )
             chat_lists.append(chat_list)
         return chat_lists
@@ -328,21 +350,17 @@ class AskThemAllViewModel(ChatHubViewModelListener):
     def on_chat_switched(self, chat: ChatModel):
         self.__chat = chat
         st.session_state.scroll_to = ScrollIntoView(
-            id=chat.interactions[-1].id,
-            behavior='instant'
+            id=chat.interactions[-1].id, behavior="instant"
         )
 
     def on_question_answered(self, chat: ChatModel):
         self.__scroll_to = ScrollIntoView(
-            id=chat.interactions[-1].id,
-            behavior='instant'
+            id=chat.interactions[-1].id, behavior="instant"
         )
 
     def on_goto_interaction(self, interaction_id: str):
         self.__scroll_to = ScrollIntoView(
-            id=interaction_id,
-            behavior='smooth',
-            delay=100
+            id=interaction_id, behavior="smooth", delay=100
         )
 
     @property

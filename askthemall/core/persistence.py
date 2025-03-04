@@ -38,11 +38,10 @@ class ChatBotData(Data):
     name: str
 
 
-D = TypeVar('D', bound=Data)
+D = TypeVar("D", bound=Data)
 
 
 class DataListResult(Generic[D]):
-
     def __init__(self, data: List[D], total_results):
         self.__data = data
         self.__total_results = total_results
@@ -57,7 +56,6 @@ class DataListResult(Generic[D]):
 
 
 class Repository(ABC, Generic[D]):
-
     @abstractmethod
     def save(self, data: D):
         pass
@@ -76,13 +74,16 @@ class Repository(ABC, Generic[D]):
 
 
 class ChatRepository(Repository[ChatData], ABC):
-
     @abstractmethod
-    def find_all_by_chat_bot_id(self, chat_bot_id, max_results) -> DataListResult[ChatData]:
+    def find_all_by_chat_bot_id(
+        self, chat_bot_id, max_results
+    ) -> DataListResult[ChatData]:
         pass
 
     @abstractmethod
-    def search_chats(self, search_filter: str, max_results=100) -> DataListResult[ChatData]:
+    def search_chats(
+        self, search_filter: str, max_results=100
+    ) -> DataListResult[ChatData]:
         pass
 
 
@@ -103,7 +104,6 @@ class InteractionRepository(Repository[InteractionData], ABC):
 
 
 class DatabaseMigration(ABC):
-
     @abstractmethod
     def migrate(self):
         pass

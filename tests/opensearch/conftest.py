@@ -1,17 +1,24 @@
 import pytest
 from testcontainers.opensearch import OpenSearchContainer
 
-from askthemall.opensearch import OpenSearchDatabaseMigration, OpenSearchChatBotRepository, OpenSearchChatRepository, \
-    OpenSearchInteractionRepository, IndexNames
+from askthemall.opensearch import (
+    OpenSearchDatabaseMigration,
+    OpenSearchChatBotRepository,
+    OpenSearchChatRepository,
+    OpenSearchInteractionRepository,
+    IndexNames,
+)
 
 
 @pytest.fixture(scope="session")
 def opensearch():
-    opensearch_container = OpenSearchContainer(image='opensearchproject/opensearch:2.17.1') \
-        .with_env("DISABLE_SECURITY_PLUGIN", "true") \
-        .with_bind_ports(container=9200, host=9201) \
+    opensearch_container = (
+        OpenSearchContainer(image="opensearchproject/opensearch:2.17.1")
+        .with_env("DISABLE_SECURITY_PLUGIN", "true")
+        .with_bind_ports(container=9200, host=9201)
         .with_bind_ports(container=9600, host=9601)
-    del opensearch_container.env['plugins.security.disabled']
+    )
+    del opensearch_container.env["plugins.security.disabled"]
 
     with opensearch_container as container:
         yield container
@@ -24,7 +31,7 @@ def client(opensearch):
 
 @pytest.fixture(scope="session")
 def index_names():
-    return IndexNames(prefix='askthemall_test_')
+    return IndexNames(prefix="askthemall_test_")
 
 
 @pytest.fixture(scope="session")
@@ -47,7 +54,7 @@ def migration(chat_bot_repository, chat_repository, interaction_repository):
     client = OpenSearchDatabaseMigration(
         chat_bot_repository=chat_bot_repository,
         chat_repository=chat_repository,
-        interaction_repository=interaction_repository
+        interaction_repository=interaction_repository,
     )
     client.migrate()
     yield client

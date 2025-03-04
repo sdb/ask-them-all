@@ -8,12 +8,14 @@ from boltons.strutils import slugify
 from dependency_injector.wiring import inject, Provide
 
 from askthemall.core.client import ChatClient, ChatInteraction
-from askthemall.core.persistence import (ChatData,
-                                         InteractionData,
-                                         ChatBotData,
-                                         ChatRepository,
-                                         InteractionRepository,
-                                         ChatBotRepository)
+from askthemall.core.persistence import (
+    ChatData,
+    InteractionData,
+    ChatBotData,
+    ChatRepository,
+    InteractionRepository,
+    ChatBotRepository,
+)
 
 
 @dataclass
@@ -30,7 +32,7 @@ class InteractionModel:
             chat_id=self.chat_id,
             question=self.question,
             answer=self.answer,
-            asked_at=self.asked_at
+            asked_at=self.asked_at,
         )
 
     @classmethod
@@ -40,21 +42,24 @@ class InteractionModel:
             chat_id=interaction_data.chat_id,
             question=interaction_data.question,
             answer=interaction_data.answer,
-            asked_at=interaction_data.asked_at
+            asked_at=interaction_data.asked_at,
         )
 
 
 class ChatModel:
-
     @inject
-    def __init__(self,
-                 chat_bot: ChatBotModel,
-                 chat_repository: ChatRepository = Provide["chat_repository"],
-                 interaction_repository: InteractionRepository = Provide["interaction_repository"]):
+    def __init__(
+        self,
+        chat_bot: ChatBotModel,
+        chat_repository: ChatRepository = Provide["chat_repository"],
+        interaction_repository: InteractionRepository = Provide[
+            "interaction_repository"
+        ],
+    ):
         self.created_at = datetime.now()
         self.id = f"{chat_bot.id}-{datetime.now().timestamp()}"
         self.slug = None
-        self.title = f'Chat with {chat_bot.name}'
+        self.title = f"Chat with {chat_bot.name}"
         self.interactions: list[InteractionModel] = []
         self.started = False
         self.__session = None
@@ -79,11 +84,14 @@ class ChatModel:
             chat_id=self.id,
             question=question,
             answer=answer,
-            asked_at=asked_at)
+            asked_at=asked_at,
+        )
         self.interactions.append(interaction)
         if not self.started:
             self.title = self.__session.suggest_title()
-            self.slug = "-".join([slugify(self.title, delim='-'), str(int(datetime.now().timestamp()))])
+            self.slug = "-".join(
+                [slugify(self.title, delim="-"), str(int(datetime.now().timestamp()))]
+            )
             self.__chat_repository.save(self.get_data())
             self.started = True
         self.__interaction_repository.save(interaction.get_data())
@@ -93,13 +101,21 @@ class ChatModel:
         self.__session = self.__chat_client.start_session()
 
     def restore_chat(self):
-        interaction_data_list = self.__interaction_repository.find_all_by_chat_id(self.id)
-        self.interactions = list(map(lambda i: InteractionModel.from_data(i), interaction_data_list))
+        interaction_data_list = self.__interaction_repository.find_all_by_chat_id(
+            self.id
+        )
+        self.interactions = list(
+            map(lambda i: InteractionModel.from_data(i), interaction_data_list)
+        )
         if self.__chat_client:
-            self.__session = self.__chat_client.restore_session(list(map(lambda i: ChatInteraction(
-                question=i.question,
-                answer=i.answer
-            ), self.interactions)))
+            self.__session = self.__chat_client.restore_session(
+                list(
+                    map(
+                        lambda i: ChatInteraction(question=i.question, answer=i.answer),
+                        self.interactions,
+                    )
+                )
+            )
 
     def remove(self):
         self.__chat_repository.delete_by_id(self.id)
@@ -111,13 +127,11 @@ class ChatModel:
             chat_bot_id=self.__chat_bot.id,
             slug=self.slug,
             title=self.title,
-            created_at=self.created_at
+            created_at=self.created_at,
         )
 
     @classmethod
-    def from_data(cls,
-                  chat_bot: ChatBotModel,
-                  chat_data: ChatData):
+    def from_data(cls, chat_bot: ChatBotModel, chat_data: ChatData):
         chat = cls(chat_bot)
         chat.id = chat_data.id
         chat.slug = chat_data.slug
@@ -128,20 +142,20 @@ class ChatModel:
 
 
 class ChatListModel:
-
     def __init__(self, chats: List[ChatModel], total_results: int):
         self.chats = chats
         self.total_results = total_results
 
 
 class ChatBotModel:
-
     @inject
-    def __init__(self,
-                 chat_bot_id: str,
-                 name: str,
-                 chat_client: ChatClient,
-                 chat_repository: ChatRepository = Provide["chat_repository"]):
+    def __init__(
+        self,
+        chat_bot_id: str,
+        name: str,
+        chat_client: ChatClient,
+        chat_repository: ChatRepository = Provide["chat_repository"],
+    ):
         self.__chat_client = chat_client
         self.__chat_repository = chat_repository
         self.__id = chat_bot_id
@@ -168,12 +182,14 @@ class ChatBotModel:
         return ChatModel.from_data(self, chat_data)
 
     def get_all_chats(self, max_results: int = 100) -> ChatListModel:
-        chat_data_list_result = self.__chat_repository.find_all_by_chat_bot_id(self.id, max_results=max_results)
+        chat_data_list_result = self.__chat_repository.find_all_by_chat_bot_id(
+            self.id, max_results=max_results
+        )
         return ChatListModel(
             chats=list(
-                map(lambda c: ChatModel.from_data(self, c),
-                    chat_data_list_result.data)),
-            total_results=chat_data_list_result.total_results
+                map(lambda c: ChatModel.from_data(self, c), chat_data_list_result.data)
+            ),
+            total_results=chat_data_list_result.total_results,
         )
 
     def new_chat(self) -> ChatModel:
@@ -188,20 +204,20 @@ class ChatBotModel:
 
 
 class AskThemAllModel:
-
     @inject
-    def __init__(self,
-                 chat_bot_repository: ChatBotRepository = Provide["chat_bot_repository"],
-                 chat_repository: ChatRepository = Provide["chat_repository"],
-                 chat_clients: List[ChatClient] = Provide["chat_clients"]):
+    def __init__(
+        self,
+        chat_bot_repository: ChatBotRepository = Provide["chat_bot_repository"],
+        chat_repository: ChatRepository = Provide["chat_repository"],
+        chat_clients: List[ChatClient] = Provide["chat_clients"],
+    ):
         self.__chat_clients = chat_clients
         self.__chat_bot_repository = chat_bot_repository
         self.__chat_repository = chat_repository
         for chat_client in self.__chat_clients:
-            self.__chat_bot_repository.save(ChatBotData(
-                id=chat_client.id,
-                name=chat_client.name
-            ))
+            self.__chat_bot_repository.save(
+                ChatBotData(id=chat_client.id, name=chat_client.name)
+            )
 
     def __get_chat_client_by_id(self, chat_client_id: str) -> ChatClient | None:
         for chat_client in self.__chat_clients:
@@ -212,7 +228,9 @@ class AskThemAllModel:
     def __get_chat_bot_by_id(self, chat_bot_id: str) -> ChatBotModel:
         for chat_bot_data in self.__chat_bot_repository.find_all():
             if chat_bot_data.id == chat_bot_id:
-                return ChatBotModel.from_data(chat_bot_data, self.__get_chat_client_by_id(chat_bot_data.id))
+                return ChatBotModel.from_data(
+                    chat_bot_data, self.__get_chat_client_by_id(chat_bot_data.id)
+                )
 
     @property
     def chat_bots(self) -> List[ChatBotModel]:
@@ -227,15 +245,25 @@ class AskThemAllModel:
         return chat_bots
 
     def filter_chats(self, search_filter: str, max_results: int = 100) -> ChatListModel:
-        chat_data_list_result = self.__chat_repository.search_chats(search_filter, max_results)
+        chat_data_list_result = self.__chat_repository.search_chats(
+            search_filter, max_results
+        )
         return ChatListModel(
-            chats=list(map(lambda c: ChatModel.from_data(self.__get_chat_bot_by_id(c.chat_bot_id), c),
-                           chat_data_list_result.data)),
-            total_results=chat_data_list_result.total_results
+            chats=list(
+                map(
+                    lambda c: ChatModel.from_data(
+                        self.__get_chat_bot_by_id(c.chat_bot_id), c
+                    ),
+                    chat_data_list_result.data,
+                )
+            ),
+            total_results=chat_data_list_result.total_results,
         )
 
     def switch_chat(self, chat_id) -> ChatModel:
         chat_data = self.__chat_repository.get_by_id(chat_id)
-        chat = ChatModel.from_data(self.__get_chat_bot_by_id(chat_data.chat_bot_id), chat_data)
+        chat = ChatModel.from_data(
+            self.__get_chat_bot_by_id(chat_data.chat_bot_id), chat_data
+        )
         chat.restore_chat()
         return chat
