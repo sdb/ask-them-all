@@ -78,7 +78,7 @@ class OpenSearchRepository(Repository[D], ABC):
 
     def find_all(self) -> List[D]:
         response = self._client.search(
-            index=self._alias, body={"query": {"match_all": {}}}
+            index=self._alias, body={"query": {"match_all": {}}, "size": 100}
         )
         all_data = [self._to_data(hit["_source"]) for hit in response["hits"]["hits"]]
         return all_data
