@@ -265,7 +265,8 @@ class ChatViewModel:
         )
 
     def ask_question(self, question):
-        self.__chat.ask_question(question)
+        for chunk in self.__chat.ask_question(question):
+            yield chunk
         self.__chat_hub_listener.on_question_answered(self.__chat)
         st.rerun()
 

@@ -77,7 +77,14 @@ class ChatModel:
         return self.__chat_client is not None
 
     def ask_question(self, question):
-        answer = self.__session.ask(question)
+        answer_generator = self.__session.ask(question)
+
+        full_answer_chunks: List[str] = []
+        for chunk in answer_generator:
+            full_answer_chunks.append(chunk)
+            yield chunk
+
+        answer = "".join(full_answer_chunks)
         asked_at = datetime.now()
         interaction = InteractionModel(
             id=f"{self.__chat_bot.id}-{asked_at.timestamp()}",
@@ -95,7 +102,6 @@ class ChatModel:
             self.__chat_repository.save(self.get_data())
             self.started = True
         self.__interaction_repository.save(interaction.get_data())
-        return answer
 
     def start_chat(self):
         self.__session = self.__chat_client.start_session()

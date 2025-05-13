@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -141,7 +142,12 @@ def render():
 
             if question:
                 with st.spinner("Generating response..."):
-                    view_model.current_chat.ask_question(question)
+                    answer_generator = view_model.current_chat.ask_question(question)
+                    with st.chat_message("user", avatar=":material/face:"):
+                        st.write(question)
+                        st.caption(format_datetime(datetime.now()))
+                    with st.chat_message("assistant", avatar=":material/smart_toy:"):
+                        st.write_stream(answer_generator)
 
     if view_model.scroll_to:
         components.html(js_scroll_to(view_model.scroll_to), height=0)

@@ -53,29 +53,22 @@ class LangChainSession(ChatSession):
             history_messages_key="history",
         )
 
-    def __ask(self, question: str, remember: bool = True) -> str:
-        answer = self.__chain_with_history.invoke(
+    def ask(self, question: str):
+        return self.__chain_with_history.stream(
             {"input": question},
             config={"configurable": {"session_id": self.__session_id}},
         )
 
-        if not remember:
-            # Pop the last interaction. ChatMessageHistory has a 'messages' attribute.
-            # It stores BaseMessage objects (HumanMessage, AIMessage).
-            if len(self.__memory.messages) >= 2:
-                self.__memory.messages.pop()  # Pop AI's response (AIMessage)
-                self.__memory.messages.pop()  # Pop user's input (HumanMessage)
-        return answer
-
-    def ask(self, question: str) -> str:
-        return self.__ask(question, remember=True)
-
     def suggest_title(self) -> str:
-        return (
-            self.__ask(" ".join(SUGGEST_TITLE_QUESTION), remember=False)
-            .rstrip()
-            .strip('"')
+        answer = self.__chain_with_history.invoke(
+            {"input": " ".join(SUGGEST_TITLE_QUESTION)},
+            config={"configurable": {"session_id": self.__session_id}},
         )
+
+        self.__memory.messages.pop()  # Pop AI's response (AIMessage)
+        self.__memory.messages.pop()  # Pop user's input (HumanMessage)
+
+        return answer.rstrip().strip('"')
 
 
 class LangChainClient(ChatClient):

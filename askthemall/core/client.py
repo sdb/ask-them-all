@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List
+from typing import List, Generator
 
 SUGGEST_TITLE_QUESTION = [
     "Generate a short descriptive title with minimum 3 words and maximum 15 words for this chat",
@@ -22,7 +22,7 @@ class ChatInteraction:
 
 class ChatSession(ABC):
     @abstractmethod
-    def ask(self, question) -> str:
+    def ask(self, question) -> Generator[str, None, None]:
         pass
 
     @abstractmethod
