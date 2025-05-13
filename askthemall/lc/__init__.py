@@ -1,7 +1,10 @@
 from typing import List
 
-from langchain.chains.conversation.base import ConversationChain
-from langchain.memory import ConversationBufferMemory
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.chat_history import InMemoryChatMessageHistory
+
 from langchain_core.language_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
@@ -18,23 +21,54 @@ from askthemall.core.client import (
 class LangChainSession(ChatSession):
     def __init__(self, llm: BaseChatModel, history: List[ChatInteraction] = None):
         self.__llm = llm
-        self.__memory = ConversationBufferMemory()
+        self.__memory = InMemoryChatMessageHistory()
+        self.__session_id = (
+            "main_chat_session"  # A consistent ID for this session instance
+        )
+
         if history:
             for interaction in history:
-                self.__memory.save_context(
-                    {"input": interaction.question}, {"output": interaction.answer}
-                )
-        self.__conversation = ConversationChain(llm=self.__llm, memory=self.__memory)
+                self.__memory.add_user_message(interaction.question)
+                self.__memory.add_ai_message(interaction.answer)
 
-    def __ask(self, question, remember=True) -> str:
-        answer = self.__conversation.predict(input=question)
+        # Define the prompt template
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                MessagesPlaceholder(
+                    variable_name="history"
+                ),  # For chat history from memory
+                ("human", "{input}"),  # For the current user input
+            ]
+        )
+
+        # Define the core LCEL chain: prompt -> llm -> string output
+        core_chain = prompt | self.__llm | StrOutputParser()
+
+        # Wrap the core chain with history management
+        # RunnableWithMessageHistory expects a factory function that returns a BaseChatMessageHistory instance
+        self.__chain_with_history = RunnableWithMessageHistory(
+            core_chain,
+            lambda session_id: self.__memory,  # This now returns a ChatMessageHistory instance
+            input_messages_key="input",
+            history_messages_key="history",
+        )
+
+    def __ask(self, question: str, remember: bool = True) -> str:
+        answer = self.__chain_with_history.invoke(
+            {"input": question},
+            config={"configurable": {"session_id": self.__session_id}},
+        )
+
         if not remember:
-            self.__memory.chat_memory.messages.pop()
-            self.__memory.chat_memory.messages.pop()
+            # Pop the last interaction. ChatMessageHistory has a 'messages' attribute.
+            # It stores BaseMessage objects (HumanMessage, AIMessage).
+            if len(self.__memory.messages) >= 2:
+                self.__memory.messages.pop()  # Pop AI's response (AIMessage)
+                self.__memory.messages.pop()  # Pop user's input (HumanMessage)
         return answer
 
-    def ask(self, question) -> str:
-        return self.__ask(question)
+    def ask(self, question: str) -> str:
+        return self.__ask(question, remember=True)
 
     def suggest_title(self) -> str:
         return (
@@ -79,11 +113,8 @@ class LangChainClient(ChatClient):
 def create_llm(llm_type, model_name, api_key):
     match llm_type:
         case "mistral":
-            # noinspection PyTypeChecker
             return ChatMistralAI(model=model_name, mistral_api_key=api_key)
         case "google":
-            # noinspection PyTypeChecker
             return ChatGoogleGenerativeAI(model=model_name, google_api_key=api_key)
         case "groq":
-            # noinspection PyTypeChecker,PyArgumentList
             return ChatGroq(model=model_name, groq_api_key=api_key)
